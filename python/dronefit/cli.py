@@ -10,6 +10,7 @@ import typer
 from rich.console import Console
 
 from dronefit.audio_io import load_audio
+from dronefit.fit import FitConfig, fit_bank_to_sample
 from dronefit.inspection import inspect_audio
 from dronefit.peaks import create_initial_bank
 from dronefit.reporting import write_bank_report, write_comparison_report, write_render_report
@@ -150,3 +151,92 @@ def compare_command(
         "duration={duration_seconds:.3f}s residual_rms={residual_rms:.6f} "
         "mean_abs_stft_db_delta={mean_abs_stft_db_delta:.3f}".format(**metrics)
     )
+
+
+@app.command("fit")
+def fit_command(
+    sample: Annotated[Path, typer.Argument(help="Target WAV/AIFF sample.")],
+    out: Annotated[Path, typer.Option(help="Output directory for fitted bank, render, and reports.")],
+    init_bank: Annotated[
+        Path | None,
+        typer.Option(help="Optional initial .dronebank.json. If omitted, one is created."),
+    ] = None,
+    partials: Annotated[int, typer.Option(help="Partials to use when creating an initial bank.")] = 96,
+    steps: Annotated[int, typer.Option(help="Optimization steps.")] = 300,
+    window_seconds: Annotated[float, typer.Option(help="Random crop length per optimization step.")] = 1.5,
+    basis_order: Annotated[int, typer.Option(help="Fourier amplitude-motion order.")] = 4,
+    learning_rate: Annotated[float, typer.Option(help="Adam learning rate.")] = 0.03,
+    device: Annotated[str, typer.Option(help="Device: auto, cpu, or mps.")] = "auto",
+    report_every: Annotated[int, typer.Option(help="Write checkpoint reports every N steps; 0 disables.")] = 100,
+    report_seconds: Annotated[float, typer.Option(help="Seconds rendered for checkpoint reports.")] = 10.0,
+    seed: Annotated[int, typer.Option(help="Random seed for crop selection.")] = 0,
+    stft_fft_sizes: Annotated[
+        str,
+        typer.Option(help="Comma-separated STFT FFT sizes for spectral loss."),
+    ] = "512,2048,8192",
+) -> None:
+    """Fit an initialized additive bank with PyTorch."""
+
+    if device not in {"auto", "cpu", "mps"}:
+        msg = "device must be one of: auto, cpu, mps"
+        raise typer.BadParameter(msg)
+
+    out.mkdir(parents=True, exist_ok=True)
+    initial_bank_path = init_bank
+    if initial_bank_path is None:
+        source_info = sf.info(sample)
+        audio = load_audio(sample, mono=True, normalize_peak_dbfs=-6.0)
+        initial_bank_path = out / "initial.dronebank.json"
+        initial_bank = create_initial_bank(
+            name=f"{sample.stem}_fit_init",
+            samples=audio.mono,
+            sample_rate=audio.sample_rate,
+            duration_seconds=audio.duration_seconds,
+            partials=partials,
+        )
+        initial_bank.metadata.update(
+            {
+                "source_path": str(sample),
+                "source_channels": source_info.channels,
+                "source_format": source_info.format,
+                "source_subtype": source_info.subtype,
+                "preprocess": {
+                    "mono": True,
+                    "remove_dc": True,
+                    "normalize_peak_dbfs": -6.0,
+                },
+            }
+        )
+        save_bank(initial_bank, initial_bank_path)
+        write_bank_report(initial_bank, out / "reports" / "initial_bank")
+        console.print(f"[green]Initial bank written:[/green] {initial_bank_path}")
+
+    config = FitConfig(
+        steps=steps,
+        window_seconds=window_seconds,
+        basis_order=basis_order,
+        learning_rate=learning_rate,
+        seed=seed,
+        device=device,  # type: ignore[arg-type]
+        stft_fft_sizes=_parse_fft_sizes(stft_fft_sizes),
+        report_every=report_every,
+        report_seconds=report_seconds,
+    )
+    result = fit_bank_to_sample(
+        sample,
+        initial_bank_path=initial_bank_path,
+        out_dir=out,
+        config=config,
+        console=console,
+    )
+    console.print(f"[green]Fitted bank written:[/green] {out / 'default.dronebank.json'}")
+    console.print(f"[green]Fitted render written:[/green] {result.render_path}")
+    console.print(f"device={result.device} steps={result.steps} final_loss={result.final_loss:.6f}")
+
+
+def _parse_fft_sizes(value: str) -> tuple[int, ...]:
+    sizes = tuple(int(part.strip()) for part in value.split(",") if part.strip())
+    if not sizes:
+        msg = "at least one FFT size is required"
+        raise typer.BadParameter(msg)
+    return sizes

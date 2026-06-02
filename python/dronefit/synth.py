@@ -20,7 +20,7 @@ def render_bank(
     gain_db: float = -12.0,
     stereo_width: float = 0.35,
 ) -> np.ndarray:
-    """Render a static additive approximation from a bank."""
+    """Render an additive approximation from a bank."""
 
     sr = sample_rate or bank.analysis_sample_rate
     duration = seconds or bank.duration_seconds
@@ -32,7 +32,8 @@ def render_bank(
 
     phases = np.array([partial.phase_rad for partial in bank.partials], dtype=np.float64)
     freqs = np.array([partial.freq_hz for partial in bank.partials], dtype=np.float64)
-    amps = np.array([db_to_amplitude(partial.amp_base) for partial in bank.partials], dtype=np.float64)
+    amp_base_db = np.array([partial.amp_base for partial in bank.partials], dtype=np.float64)
+    amp_coefficients = [np.asarray(partial.amp_coefficients, dtype=np.float64) for partial in bank.partials]
     gain = db_to_amplitude(gain_db)
 
     phase_increments = 2.0 * math.pi * freqs / sr
@@ -47,13 +48,21 @@ def render_bank(
     while cursor < frames:
         count = min(block_size, frames - cursor)
         samples = np.arange(count, dtype=np.float64)
+        times = (cursor + samples) / sr
+        model_times = _model_times(times, bank.duration_seconds)
         mono_block = np.zeros(count, dtype=np.float64)
         stereo_block = np.zeros((count, 2), dtype=np.float64)
 
         for index, is_active in enumerate(active):
             if not is_active:
                 continue
-            partial_wave = amps[index] * np.sin(phases[index] + phase_increments[index] * samples)
+            amp_db = amp_base_db[index] + _evaluate_fourier(
+                amp_coefficients[index],
+                model_times,
+                bank.duration_seconds,
+            )
+            amp = np.power(10.0, amp_db / 20.0)
+            partial_wave = amp * np.sin(phases[index] + phase_increments[index] * samples)
             if channel_count == 1:
                 mono_block += partial_wave
             else:
@@ -72,4 +81,27 @@ def render_bank(
     peak = float(np.max(np.abs(output), initial=0.0))
     if peak > 0.98:
         output *= np.float32(0.98 / peak)
+    return output
+
+
+def _model_times(times: np.ndarray, period_seconds: float) -> np.ndarray:
+    if period_seconds <= 0.0:
+        return times
+    return np.mod(times, period_seconds)
+
+
+def _evaluate_fourier(
+    coefficients: np.ndarray,
+    times: np.ndarray,
+    period_seconds: float,
+) -> np.ndarray:
+    if coefficients.size == 0 or period_seconds <= 0.0:
+        return np.zeros_like(times)
+    output = np.zeros_like(times)
+    order = coefficients.size // 2
+    for harmonic in range(1, order + 1):
+        sin_coefficient = coefficients[(harmonic - 1) * 2]
+        cos_coefficient = coefficients[(harmonic - 1) * 2 + 1]
+        angle = 2.0 * math.pi * harmonic * times / period_seconds
+        output += sin_coefficient * np.sin(angle) + cos_coefficient * np.cos(angle)
     return output

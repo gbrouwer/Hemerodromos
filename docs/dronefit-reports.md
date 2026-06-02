@@ -75,9 +75,24 @@ Outputs:
 - `residual_waveform.png`
 - bank figures when `--bank` is supplied
 
-## Future Fit Checkpoints
+## Fit Checkpoints
 
-The reporting module includes `write_fit_checkpoint_report(...)`, which is
-optimizer-independent. The PyTorch fitting loop can call it every N steps with
-the current rendered NumPy audio, target audio, current bank, step number, and
-loss value.
+The PyTorch fitting loop calls `write_fit_checkpoint_report(...)` every
+`--report-every` steps and once at the end of fitting.
+
+Example:
+
+```bash
+uv run dronefit fit audio/base/drones/drone_base3.wav \
+  --init-bank runs/drone_base3_init/default.dronebank.json \
+  --out runs/drone_base3_fit_v001 \
+  --steps 300 \
+  --report-every 100 \
+  --report-seconds 10
+```
+
+Outputs:
+
+- `runs/drone_base3_fit_v001/checkpoints/step_*.dronebank.json`
+- `runs/drone_base3_fit_v001/reports/step_*/`
+- `runs/drone_base3_fit_v001/reports/final/`

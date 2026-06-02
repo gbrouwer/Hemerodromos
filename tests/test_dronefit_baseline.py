@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import numpy as np
+import soundfile as sf
+import torch
 
+from dronefit.fit import FitConfig, fit_bank_to_sample
+from dronefit.losses import multi_resolution_stft_loss
 from dronefit.peaks import extract_spectral_peaks
 from dronefit.reporting import write_comparison_report, write_render_report
-from dronefit.schema import DroneBank, Partial, load_bank, save_bank
+from dronefit.schema import Basis, DroneBank, Partial, load_bank, save_bank
 from dronefit.synth import render_bank
 
 
@@ -43,6 +47,30 @@ def test_render_bank_shape_and_finite_values():
     assert np.max(np.abs(rendered)) > 0.0
 
 
+def test_render_bank_uses_amp_motion_coefficients():
+    bank = DroneBank(
+        name="moving",
+        analysis_sample_rate=8_000,
+        duration_seconds=1.0,
+        basis=Basis(type="fourier", order=1, period_seconds=1.0),
+        partials=[
+            Partial(
+                freq_hz=220.0,
+                amp_base=-24.0,
+                amp_coefficients=[18.0, 0.0],
+            )
+        ],
+    )
+
+    rendered = render_bank(bank, channels=1, gain_db=0.0)[:, 0]
+    loud_quarter = rendered[1_900:2_100]
+    quiet_quarter = rendered[5_900:6_100]
+
+    assert np.sqrt(np.mean(loud_quarter * loud_quarter)) > np.sqrt(
+        np.mean(quiet_quarter * quiet_quarter)
+    )
+
+
 def test_extract_spectral_peaks_finds_sine_frequency():
     sample_rate = 8_000
     freq_hz = 440.0
@@ -62,6 +90,16 @@ def test_extract_spectral_peaks_finds_sine_frequency():
     assert peaks
     strongest = min(peaks, key=lambda peak: abs(peak.freq_hz - freq_hz))
     assert abs(strongest.freq_hz - freq_hz) < 5.0
+
+
+def test_multi_resolution_stft_loss_is_finite():
+    target = torch.sin(torch.linspace(0.0, 20.0, 2048))
+    prediction = target * 0.8
+
+    loss = multi_resolution_stft_loss(prediction, target, fft_sizes=(256, 512))
+
+    assert torch.isfinite(loss)
+    assert float(loss) > 0.0
 
 
 def test_render_report_writes_figures(tmp_path):
@@ -101,3 +139,40 @@ def test_comparison_report_writes_figures(tmp_path):
     assert (tmp_path / "candidate_spectrogram_log.png").exists()
     assert (tmp_path / "spectrogram_delta_db.png").exists()
     assert (tmp_path / "median_spectrum_overlay.png").exists()
+
+
+def test_fit_bank_to_sample_writes_fitted_outputs(tmp_path):
+    sample_rate = 8_000
+    t = np.arange(sample_rate // 2, dtype=np.float32) / sample_rate
+    samples = (0.4 * np.sin(2.0 * np.pi * 220.0 * t)).astype(np.float32)
+    sample_path = tmp_path / "target.wav"
+    sf.write(sample_path, samples, sample_rate)
+    bank = DroneBank(
+        name="fit_smoke",
+        analysis_sample_rate=sample_rate,
+        duration_seconds=0.5,
+        partials=[Partial(freq_hz=220.0, amp_base=-30.0)],
+    )
+    initial_bank_path = tmp_path / "initial.dronebank.json"
+    save_bank(bank, initial_bank_path)
+
+    result = fit_bank_to_sample(
+        sample_path,
+        initial_bank_path=initial_bank_path,
+        out_dir=tmp_path / "fit",
+        config=FitConfig(
+            steps=4,
+            window_seconds=0.25,
+            basis_order=0,
+            learning_rate=0.05,
+            device="cpu",
+            stft_fft_sizes=(256, 512),
+            report_every=0,
+        ),
+    )
+
+    fitted_bank = load_bank(tmp_path / "fit" / "default.dronebank.json")
+    assert result.render_path.exists()
+    assert len(fitted_bank.partials) == 1
+    assert fitted_bank.metadata["fit"]["steps"] == 4
+    assert (tmp_path / "fit" / "reports" / "final" / "comparison_metrics.json").exists()
