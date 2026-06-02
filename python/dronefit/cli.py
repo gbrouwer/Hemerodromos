@@ -12,6 +12,7 @@ from rich.console import Console
 from dronefit.audio_io import load_audio
 from dronefit.inspection import inspect_audio
 from dronefit.peaks import create_initial_bank
+from dronefit.reporting import write_bank_report, write_comparison_report, write_render_report
 from dronefit.schema import load_bank, save_bank
 from dronefit.synth import render_bank
 
@@ -41,6 +42,10 @@ def init_bank_command(
     out: Annotated[Path, typer.Option(help="Output .dronebank.json path.")],
     partials: Annotated[int, typer.Option(help="Number of partials to initialize.")] = 96,
     root_midi_note: Annotated[int, typer.Option(help="Reference note for later transposition.")] = 48,
+    report_out: Annotated[
+        Path | None,
+        typer.Option(help="Optional directory for bank figures and metrics."),
+    ] = None,
 ) -> None:
     """Create an initial additive bank from stable STFT peaks."""
 
@@ -71,6 +76,9 @@ def init_bank_command(
     save_bank(bank, out)
     console.print(f"[green]Bank written:[/green] {out}")
     console.print(f"partials={len(bank.partials)} sample_rate={bank.analysis_sample_rate}Hz")
+    if report_out is not None:
+        write_bank_report(bank, report_out)
+        console.print(f"[green]Bank report written:[/green] {report_out}")
 
 
 @app.command("render")
@@ -81,6 +89,10 @@ def render_command(
     sample_rate: Annotated[int | None, typer.Option(help="Override render sample rate.")] = None,
     channels: Annotated[int, typer.Option(help="Output channel count.")] = 2,
     gain_db: Annotated[float, typer.Option(help="Output gain in dB.")] = -12.0,
+    report_out: Annotated[
+        Path | None,
+        typer.Option(help="Optional directory for render figures and metrics."),
+    ] = None,
 ) -> None:
     """Render a bank to audio without the original sample."""
 
@@ -98,4 +110,43 @@ def render_command(
     console.print(
         f"frames={len(rendered)} channels={rendered.shape[1]} "
         f"sample_rate={sample_rate or bank.analysis_sample_rate}Hz"
+    )
+    if report_out is not None:
+        write_render_report(
+            rendered,
+            sample_rate or bank.analysis_sample_rate,
+            report_out,
+            bank=bank,
+            label="render",
+        )
+        console.print(f"[green]Render report written:[/green] {report_out}")
+
+
+@app.command("compare")
+def compare_command(
+    target: Annotated[Path, typer.Argument(help="Target sample WAV/AIFF.")],
+    candidate: Annotated[Path, typer.Argument(help="Rendered candidate WAV/AIFF.")],
+    out: Annotated[Path, typer.Option(help="Output comparison report directory.")],
+    bank: Annotated[
+        Path | None,
+        typer.Option(help="Optional bank JSON to include bank figures in the report."),
+    ] = None,
+) -> None:
+    """Generate target-vs-render figures and metrics."""
+
+    target_audio = load_audio(target, mono=False, remove_dc=False)
+    candidate_audio = load_audio(candidate, mono=False, remove_dc=False)
+    bank_model = load_bank(bank) if bank is not None else None
+    metrics = write_comparison_report(
+        target_audio.samples,
+        target_audio.sample_rate,
+        candidate_audio.samples,
+        candidate_audio.sample_rate,
+        out,
+        bank=bank_model,
+    )
+    console.print(f"[green]Comparison report written:[/green] {out}")
+    console.print(
+        "duration={duration_seconds:.3f}s residual_rms={residual_rms:.6f} "
+        "mean_abs_stft_db_delta={mean_abs_stft_db_delta:.3f}".format(**metrics)
     )

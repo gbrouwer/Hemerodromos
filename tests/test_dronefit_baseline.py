@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from dronefit.peaks import extract_spectral_peaks
+from dronefit.reporting import write_comparison_report, write_render_report
 from dronefit.schema import DroneBank, Partial, load_bank, save_bank
 from dronefit.synth import render_bank
 
@@ -61,3 +62,42 @@ def test_extract_spectral_peaks_finds_sine_frequency():
     assert peaks
     strongest = min(peaks, key=lambda peak: abs(peak.freq_hz - freq_hz))
     assert abs(strongest.freq_hz - freq_hz) < 5.0
+
+
+def test_render_report_writes_figures(tmp_path):
+    sample_rate = 8_000
+    t = np.arange(sample_rate // 2, dtype=np.float32) / sample_rate
+    samples = np.sin(2.0 * np.pi * 220.0 * t).astype(np.float32)
+    bank = DroneBank(
+        name="test",
+        analysis_sample_rate=sample_rate,
+        duration_seconds=0.5,
+        partials=[Partial(freq_hz=220.0, amp_base=-6.0)],
+    )
+
+    metrics = write_render_report(samples, sample_rate, tmp_path, bank=bank)
+
+    assert metrics["frames"] == len(samples)
+    assert (tmp_path / "render_metrics.json").exists()
+    assert (tmp_path / "render_waveform.png").exists()
+    assert (tmp_path / "render_spectrogram_log.png").exists()
+    assert (tmp_path / "render_median_spectrum.png").exists()
+    assert (tmp_path / "bank_partials.png").exists()
+
+
+def test_comparison_report_writes_figures(tmp_path):
+    sample_rate = 8_000
+    t = np.arange(sample_rate // 2, dtype=np.float32) / sample_rate
+    target = np.sin(2.0 * np.pi * 220.0 * t).astype(np.float32)
+    candidate = 0.8 * np.sin(2.0 * np.pi * 220.0 * t).astype(np.float32)
+
+    metrics = write_comparison_report(target, sample_rate, candidate, sample_rate, tmp_path)
+
+    assert metrics["frames_compared"] == len(target)
+    assert metrics["residual_rms"] > 0.0
+    assert (tmp_path / "comparison_metrics.json").exists()
+    assert (tmp_path / "waveform_overlay.png").exists()
+    assert (tmp_path / "target_spectrogram_log.png").exists()
+    assert (tmp_path / "candidate_spectrogram_log.png").exists()
+    assert (tmp_path / "spectrogram_delta_db.png").exists()
+    assert (tmp_path / "median_spectrum_overlay.png").exists()
