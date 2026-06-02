@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 from typing import Annotated
 
 import soundfile as sf
@@ -10,7 +11,7 @@ import typer
 from rich.console import Console
 
 from dronefit.audio_io import load_audio
-from dronefit.fit import FitConfig, fit_bank_to_sample
+from dronefit.fit import FitConfig, fit_bank_to_sample, fitted_render_path
 from dronefit.inspection import inspect_audio
 from dronefit.peaks import create_initial_bank
 from dronefit.reporting import write_bank_report, write_comparison_report, write_render_report
@@ -174,6 +175,10 @@ def fit_command(
         str,
         typer.Option(help="Comma-separated STFT FFT sizes for spectral loss."),
     ] = "512,2048,8192",
+    overwrite: Annotated[
+        bool,
+        typer.Option(help="Allow reusing an existing run directory and overwrite known fit outputs."),
+    ] = False,
 ) -> None:
     """Fit an initialized additive bank with PyTorch."""
 
@@ -181,7 +186,7 @@ def fit_command(
         msg = "device must be one of: auto, cpu, mps"
         raise typer.BadParameter(msg)
 
-    out.mkdir(parents=True, exist_ok=True)
+    _prepare_fit_output_dir(out, overwrite=overwrite)
     initial_bank_path = init_bank
     if initial_bank_path is None:
         source_info = sf.info(sample)
@@ -240,3 +245,40 @@ def _parse_fft_sizes(value: str) -> tuple[int, ...]:
         msg = "at least one FFT size is required"
         raise typer.BadParameter(msg)
     return sizes
+
+
+def _prepare_fit_output_dir(out: Path, *, overwrite: bool) -> None:
+    if out.exists() and not out.is_dir():
+        msg = f"fit output path exists and is not a directory: {out}"
+        raise typer.BadParameter(msg)
+
+    if out.exists():
+        entries = [path for path in out.iterdir() if path.name != ".DS_Store"]
+        if entries and not overwrite:
+            preview = ", ".join(path.name for path in sorted(entries)[:5])
+            if len(entries) > 5:
+                preview += ", ..."
+            msg = (
+                f"fit output directory is not empty: {out}. "
+                f"Existing entries: {preview}. "
+                "Use a new --out directory or pass --overwrite."
+            )
+            raise typer.BadParameter(msg)
+        if overwrite:
+            _remove_known_fit_outputs(out)
+
+    out.mkdir(parents=True, exist_ok=True)
+
+
+def _remove_known_fit_outputs(out: Path) -> None:
+    for path in [
+        out / "initial.dronebank.json",
+        out / "default.dronebank.json",
+        out / "render.wav",
+        fitted_render_path(out),
+    ]:
+        if path.exists() and path.is_file():
+            path.unlink()
+    for path in [out / "checkpoints", out / "reports"]:
+        if path.exists() and path.is_dir():
+            shutil.rmtree(path)

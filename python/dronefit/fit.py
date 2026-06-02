@@ -48,6 +48,14 @@ class FitResult:
     render_path: Path
 
 
+def fitted_render_path(output_dir: str | Path) -> Path:
+    """Return the final render path for a fit run directory."""
+
+    path = Path(output_dir)
+    stem = path.name or "render"
+    return path / f"{stem}.wav"
+
+
 class AdditiveFitModel(torch.nn.Module):
     """Fixed-frequency additive model with learnable amplitude motion."""
 
@@ -238,7 +246,7 @@ def fit_bank_to_sample(
     bank_path = output_dir / "default.dronebank.json"
     save_bank(fitted_bank, bank_path)
 
-    render_path = output_dir / "render.wav"
+    render_path = fitted_render_path(output_dir)
     rendered = render_bank(
         fitted_bank,
         seconds=fitted_bank.duration_seconds,

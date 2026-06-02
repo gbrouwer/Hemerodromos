@@ -45,10 +45,36 @@ The fit output directory contains:
 
 - `initial.dronebank.json` when no initial bank was supplied;
 - `default.dronebank.json` for the fitted bank;
-- `render.wav` for the fitted render;
+- `<run-directory-name>.wav` for the fitted render;
 - `checkpoints/step_*.dronebank.json`;
 - `reports/step_*/` checkpoint figures;
 - `reports/final/` final comparison figures and metrics.
+
+Example:
+
+```text
+runs/drone_base4_fit_v001/default.dronebank.json
+runs/drone_base4_fit_v001/drone_base4_fit_v001.wav
+runs/drone_base4_fit_v001/reports/final/
+```
+
+`dronefit fit` refuses to write into an existing non-empty output directory by
+default. Use a new run directory for each serious experiment:
+
+```text
+runs/drone_base4_fit_v001
+runs/drone_base4_fit_v002
+runs/drone_base4_fit_v003
+```
+
+If a run should intentionally be replaced, pass:
+
+```bash
+--overwrite
+```
+
+With `--overwrite`, `dronefit` clears known generated fit artifacts from that
+run directory before writing new outputs.
 
 The fitted bank uses:
 

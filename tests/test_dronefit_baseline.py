@@ -4,7 +4,7 @@ import numpy as np
 import soundfile as sf
 import torch
 
-from dronefit.fit import FitConfig, fit_bank_to_sample
+from dronefit.fit import FitConfig, fit_bank_to_sample, fitted_render_path
 from dronefit.losses import multi_resolution_stft_loss
 from dronefit.peaks import extract_spectral_peaks
 from dronefit.reporting import write_comparison_report, write_render_report
@@ -172,7 +172,14 @@ def test_fit_bank_to_sample_writes_fitted_outputs(tmp_path):
     )
 
     fitted_bank = load_bank(tmp_path / "fit" / "default.dronebank.json")
+    assert result.render_path == tmp_path / "fit" / "fit.wav"
     assert result.render_path.exists()
     assert len(fitted_bank.partials) == 1
     assert fitted_bank.metadata["fit"]["steps"] == 4
     assert (tmp_path / "fit" / "reports" / "final" / "comparison_metrics.json").exists()
+
+
+def test_fitted_render_path_uses_run_directory_name(tmp_path):
+    assert fitted_render_path(tmp_path / "drone_base4_fit_v001") == (
+        tmp_path / "drone_base4_fit_v001" / "drone_base4_fit_v001.wav"
+    )
