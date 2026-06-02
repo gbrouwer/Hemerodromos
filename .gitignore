@@ -1,5 +1,14 @@
 .DS_Store
 
+# Python / uv
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
 # Audio recordings and generated audio should stay local unless explicitly approved.
 *.wav
 *.aif
