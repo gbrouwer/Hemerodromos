@@ -10,6 +10,9 @@ __pycache__/
 .ipynb_checkpoints/
 
 # Audio recordings and generated audio should stay local unless explicitly approved.
+/reports/
+/runs/
+/renders/
 *.wav
 *.aif
 *.aiff
