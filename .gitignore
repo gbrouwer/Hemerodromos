@@ -9,6 +9,19 @@ __pycache__/
 .mypy_cache/
 .ipynb_checkpoints/
 
+# C++ build outputs
+/build*/
+/cmake-build-*/
+*.vst3
+*.component
+*.dll
+*.dylib
+*.so
+*.pdb
+*.ilk
+*.obj
+*.o
+
 # Audio recordings and generated audio should stay local unless explicitly approved.
 /reports/
 /runs/
