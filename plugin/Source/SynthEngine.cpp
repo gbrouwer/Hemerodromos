@@ -27,6 +27,7 @@ void SynthEngine::reset()
 {
     std::fill (phases_.begin(), phases_.end(), 0.0);
     modelTimeSeconds_ = 0.0;
+    gateOpen_ = defaultGateOpen();
     envelope_ = 0.0f;
     macroPhase_ = 0.0f;
     postEffects_.reset();

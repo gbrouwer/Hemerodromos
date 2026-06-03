@@ -21,7 +21,7 @@ HemerodromosDroneAudioProcessorEditor::HemerodromosDroneAudioProcessorEditor (
     setLookAndFeel (&lookAndFeel_);
     setSize (980, 620);
 
-    titleLabel_.setText ("Hemerodromos Drone", juce::dontSendNotification);
+    titleLabel_.setText (JucePlugin_Name, juce::dontSendNotification);
     titleLabel_.setFont (juce::FontOptions (25.0f, juce::Font::bold));
     titleLabel_.setColour (juce::Label::textColourId, juce::Colour (0xfff0f2f5));
     addAndMakeVisible (titleLabel_);
@@ -65,7 +65,8 @@ HemerodromosDroneAudioProcessorEditor::HemerodromosDroneAudioProcessorEditor (
 
     if (const auto* bank = processor_.currentBank())
         statusLabel_.setText (juce::String ("Partials: ") + juce::String (static_cast<int> (bank->partials.size()))
-                                  + "  Model: " + bank->modelType,
+                                  + "  Model: " + bank->modelType
+                                  + (HEMERODROMOS_TRIGGERED_INSTRUMENT != 0 ? "  MIDI gated" : "  Latched drone"),
                               juce::dontSendNotification);
     else
         statusLabel_.setText ("Embedded fitted banks", juce::dontSendNotification);

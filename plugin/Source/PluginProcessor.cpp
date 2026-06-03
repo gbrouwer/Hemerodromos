@@ -88,7 +88,9 @@ HemerodromosDroneAudioProcessor::createParameterLayout()
     }
 
     params.push_back (std::make_unique<juce::AudioParameterBool> (
-        juce::ParameterID { ParameterIds::latch, 1 }, "Latch", true));
+        juce::ParameterID { ParameterIds::latch, 1 },
+        "Latch",
+        HEMERODROMOS_TRIGGERED_INSTRUMENT == 0));
 
     return { params.begin(), params.end() };
 }
