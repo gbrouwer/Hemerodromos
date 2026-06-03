@@ -20,10 +20,13 @@ void DroneLookAndFeel::drawRotarySlider (juce::Graphics& g,
                                          float rotaryEndAngle,
                                          juce::Slider& slider)
 {
-    const auto bounds = juce::Rectangle<float> (static_cast<float> (x),
-                                               static_cast<float> (y),
-                                               static_cast<float> (width),
-                                               static_cast<float> (height))
+    const auto outer = juce::Rectangle<float> (static_cast<float> (x),
+                                              static_cast<float> (y),
+                                              static_cast<float> (width),
+                                              static_cast<float> (height));
+    const auto squareSize = juce::jmin (outer.getWidth(), outer.getHeight());
+    const auto bounds = juce::Rectangle<float> (squareSize, squareSize)
+                            .withCentre (outer.getCentre())
                             .reduced (5.0f);
     const auto radius = juce::jmin (bounds.getWidth(), bounds.getHeight()) * 0.5f;
     const auto centre = bounds.getCentre();
@@ -41,7 +44,8 @@ void DroneLookAndFeel::drawRotarySlider (juce::Graphics& g,
     g.setColour (slider.findColour (juce::Slider::rotarySliderFillColourId));
     g.strokePath (valueArc, juce::PathStrokeType (4.6f, juce::PathStrokeType::curved));
 
-    auto knob = bounds.reduced (radius * 0.18f);
+    const auto knobRadius = radius * 0.82f;
+    auto knob = juce::Rectangle<float> (knobRadius * 2.0f, knobRadius * 2.0f).withCentre (centre);
     g.setGradientFill (juce::ColourGradient (juce::Colour (0xff22272e), knob.getCentreX(), knob.getY(),
                                              juce::Colour (0xff111418), knob.getCentreX(), knob.getBottom(),
                                              false));

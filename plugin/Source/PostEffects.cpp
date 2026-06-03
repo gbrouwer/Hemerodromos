@@ -45,18 +45,22 @@ void PostEffects::process (juce::AudioBuffer<float>& buffer, const PostEffectPar
             auto* right = buffer.getWritePointer (1);
             for (int i = 0; i < samples; ++i)
             {
-                const auto wetL = resonatorL_.processSample (0, left[i]);
-                const auto wetR = resonatorR_.processSample (0, right[i]);
-                left[i] = juce::jmap (resonatorAmount, left[i], wetL);
-                right[i] = juce::jmap (resonatorAmount, right[i], wetR);
+                const auto wetMix = juce::jlimit (0.0f, 1.0f, 0.15f + 0.85f * resonatorAmount);
+                const auto wetGain = resonatorValue >= 0.0f ? 2.6f : 2.1f;
+                const auto wetL = resonatorL_.processSample (0, left[i]) * wetGain;
+                const auto wetR = resonatorR_.processSample (0, right[i]) * wetGain;
+                left[i] = left[i] * (1.0f - wetMix * 0.72f) + wetL * wetMix;
+                right[i] = right[i] * (1.0f - wetMix * 0.72f) + wetR * wetMix;
             }
         }
         else
         {
             for (int i = 0; i < samples; ++i)
             {
-                const auto wet = resonatorL_.processSample (0, left[i]);
-                left[i] = juce::jmap (resonatorAmount, left[i], wet);
+                const auto wetMix = juce::jlimit (0.0f, 1.0f, 0.15f + 0.85f * resonatorAmount);
+                const auto wetGain = resonatorValue >= 0.0f ? 2.6f : 2.1f;
+                const auto wet = resonatorL_.processSample (0, left[i]) * wetGain;
+                left[i] = left[i] * (1.0f - wetMix * 0.72f) + wet * wetMix;
             }
         }
     }
@@ -82,16 +86,16 @@ void PostEffects::process (juce::AudioBuffer<float>& buffer, const PostEffectPar
                 const auto wobble = std::sin (roughPhase_) * roughnessAmount;
                 if (roughnessValue >= 0.0f)
                 {
-                    left[i] *= 1.0f + wobble * 0.05f;
-                    right[i] *= 1.0f - wobble * 0.05f;
+                    left[i] *= 1.0f + wobble * 0.12f;
+                    right[i] *= 1.0f - wobble * 0.12f;
                 }
                 else
                 {
-                    const auto flutter = 1.0f + wobble * 0.08f;
-                    left[i] = std::tanh (left[i] * flutter * (1.0f + 0.18f * roughnessAmount))
-                            / (1.0f + 0.05f * roughnessAmount);
-                    right[i] = std::tanh (right[i] * flutter * (1.0f + 0.18f * roughnessAmount))
-                             / (1.0f + 0.05f * roughnessAmount);
+                    const auto flutter = 1.0f + wobble * 0.16f;
+                    left[i] = std::tanh (left[i] * flutter * (1.0f + 0.45f * roughnessAmount))
+                            / (1.0f + 0.08f * roughnessAmount);
+                    right[i] = std::tanh (right[i] * flutter * (1.0f + 0.45f * roughnessAmount))
+                             / (1.0f + 0.08f * roughnessAmount);
                 }
             }
         }
@@ -105,11 +109,11 @@ void PostEffects::process (juce::AudioBuffer<float>& buffer, const PostEffectPar
 
                 const auto wobble = std::sin (roughPhase_) * roughnessAmount;
                 if (roughnessValue >= 0.0f)
-                    left[i] *= 1.0f + wobble * 0.04f;
+                    left[i] *= 1.0f + wobble * 0.10f;
                 else
-                    left[i] = std::tanh (left[i] * (1.0f + wobble * 0.08f)
-                                       * (1.0f + 0.18f * roughnessAmount))
-                            / (1.0f + 0.05f * roughnessAmount);
+                    left[i] = std::tanh (left[i] * (1.0f + wobble * 0.16f)
+                                       * (1.0f + 0.45f * roughnessAmount))
+                            / (1.0f + 0.08f * roughnessAmount);
             }
         }
     }
@@ -118,7 +122,7 @@ void PostEffects::process (juce::AudioBuffer<float>& buffer, const PostEffectPar
     const auto sizeOffset = juce::jlimit (-1.0f, 1.0f, parameters.reverbSize);
     const auto decayOffset = juce::jlimit (-1.0f, 1.0f, parameters.reverbDecay);
     const auto mix = juce::jlimit (0.0f, 1.0f, std::abs (space)
-                                                + 0.18f * juce::jmax (std::abs (sizeOffset),
+                                                + 0.35f * juce::jmax (std::abs (sizeOffset),
                                                                       std::abs (decayOffset)));
     if (mix > 0.001f)
     {
@@ -128,8 +132,8 @@ void PostEffects::process (juce::AudioBuffer<float>& buffer, const PostEffectPar
         rp.damping = space >= 0.0f
             ? juce::jlimit (0.0f, 1.0f, 0.22f + 0.35f * (1.0f - (0.55f + 0.40f * decayOffset)))
             : juce::jlimit (0.0f, 1.0f, 0.55f + 0.35f * std::abs (space));
-        rp.wetLevel = mix * (space >= 0.0f ? 0.55f : 0.42f);
-        rp.dryLevel = 1.0f - mix * 0.18f;
+        rp.wetLevel = mix * (space >= 0.0f ? 0.70f : 0.56f);
+        rp.dryLevel = 1.0f - mix * 0.12f;
         rp.width = juce::jlimit (0.0f, 1.0f, 0.55f + 0.45f * (std::abs (space)
                                        + 0.5f * parameters.stereoWidth / 0.70f));
         rp.freezeMode = 0.0f;

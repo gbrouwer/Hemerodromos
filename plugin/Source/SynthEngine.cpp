@@ -101,8 +101,8 @@ void SynthEngine::process (juce::AudioBuffer<float>& buffer,
                 : 0.9f * std::sin (macroPhase_)
                     + 0.25f * std::sin (1.51f * macroPhase_)
                     - 0.12f * std::sin (2.63f * macroPhase_);
-            left += osc * macroAmount * 0.12f;
-            right += osc * macroAmount * (parameters.macroOsc >= 0.0f ? 0.12f : 0.10f);
+            left += osc * macroAmount * (parameters.macroOsc >= 0.0f ? 0.24f : 0.20f);
+            right += osc * macroAmount * (parameters.macroOsc >= 0.0f ? 0.22f : 0.17f);
         }
 
         buffer.setSample (0, sample, left * gain);
@@ -162,7 +162,7 @@ double SynthEngine::evaluateAmpDb (const DronePartial& partial,
     auto ampDb = partial.amplitudeDb;
     const auto pivotHz = 700.0;
     const auto brightness = static_cast<double> (parameters.brightness);
-    ampDb += brightness * 4.5 * std::log2 (juce::jmax (partial.frequencyHz, 20.0) / pivotHz);
+    ampDb += brightness * 9.0 * std::log2 (juce::jmax (partial.frequencyHz, 20.0) / pivotHz);
 
     const auto coeffCount = static_cast<int> (partial.amplitudeCoefficients.size());
     const auto order = coeffCount / 2;
@@ -174,7 +174,19 @@ double SynthEngine::evaluateAmpDb (const DronePartial& partial,
         motionDb += partial.amplitudeCoefficients[static_cast<size_t> ((harmonic - 1) * 2)] * std::sin (angle)
                   + partial.amplitudeCoefficients[static_cast<size_t> ((harmonic - 1) * 2 + 1)] * std::cos (angle);
     }
-    ampDb += motionDb * static_cast<double> (parameters.motionDepth);
-    ampDb += static_cast<double> (parameters.roughness) * 1.5 * std::sin (partial.frequencyHz * 0.017);
+    const auto motionDepth = juce::jlimit (0.0, 2.0, static_cast<double> (parameters.motionDepth));
+    const auto effectiveMotionDepth = motionDepth <= 1.0 ? motionDepth : 1.0 + (motionDepth - 1.0) * 3.0;
+    ampDb += motionDb * effectiveMotionDepth;
+
+    const auto roughness = juce::jlimit (-1.0, 1.0, static_cast<double> (parameters.roughness));
+    const auto roughnessAmount = std::abs (roughness);
+    if (roughnessAmount > 0.001)
+    {
+        const auto contour = roughness >= 0.0
+            ? std::sin (partial.frequencyHz * 0.017)
+            : std::cos (partial.frequencyHz * 0.007 + 1.3);
+        ampDb += roughnessAmount * 4.0 * contour;
+    }
+
     return ampDb;
 }
