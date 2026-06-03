@@ -86,18 +86,23 @@ void SynthEngine::process (juce::AudioBuffer<float>& buffer,
                 phases_[static_cast<size_t> (i)] -= juce::MathConstants<double>::twoPi;
         }
 
-        if (parameters.macroOsc > 0.001f)
+        const auto macroAmount = std::abs (parameters.macroOsc);
+        if (macroAmount > 0.001f)
         {
             macroPhase_ += static_cast<float> (juce::MathConstants<double>::twoPi
-                         * 55.0 * ratio / sampleRate_);
+                         * (parameters.macroOsc >= 0.0f ? 55.0 : 27.5) * ratio / sampleRate_);
             if (macroPhase_ > juce::MathConstants<float>::twoPi)
                 macroPhase_ -= juce::MathConstants<float>::twoPi;
 
-            const auto osc = std::sin (macroPhase_)
-                           + 0.35f * std::sin (2.01f * macroPhase_)
-                           + 0.18f * std::sin (3.98f * macroPhase_);
-            left += osc * parameters.macroOsc * 0.12f;
-            right += osc * parameters.macroOsc * 0.12f;
+            const auto osc = parameters.macroOsc >= 0.0f
+                ? std::sin (macroPhase_)
+                    + 0.35f * std::sin (2.01f * macroPhase_)
+                    + 0.18f * std::sin (3.98f * macroPhase_)
+                : 0.9f * std::sin (macroPhase_)
+                    + 0.25f * std::sin (1.51f * macroPhase_)
+                    - 0.12f * std::sin (2.63f * macroPhase_);
+            left += osc * macroAmount * 0.12f;
+            right += osc * macroAmount * (parameters.macroOsc >= 0.0f ? 0.12f : 0.10f);
         }
 
         buffer.setSample (0, sample, left * gain);
@@ -156,8 +161,8 @@ double SynthEngine::evaluateAmpDb (const DronePartial& partial,
 {
     auto ampDb = partial.amplitudeDb;
     const auto pivotHz = 700.0;
-    const auto brightness = static_cast<double> (parameters.brightness - 0.5f);
-    ampDb += brightness * 9.0 * std::log2 (juce::jmax (partial.frequencyHz, 20.0) / pivotHz);
+    const auto brightness = static_cast<double> (parameters.brightness);
+    ampDb += brightness * 4.5 * std::log2 (juce::jmax (partial.frequencyHz, 20.0) / pivotHz);
 
     const auto coeffCount = static_cast<int> (partial.amplitudeCoefficients.size());
     const auto order = coeffCount / 2;

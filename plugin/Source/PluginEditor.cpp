@@ -2,6 +2,18 @@
 
 #include "ParameterIds.h"
 
+namespace
+{
+const ParameterIds::KnobParameterSpec* findKnobSpec (const char* parameterId) noexcept
+{
+    for (const auto& spec : ParameterIds::knobParameterSpecs)
+        if (juce::StringRef (parameterId) == juce::StringRef (spec.id))
+            return &spec;
+
+    return nullptr;
+}
+} // namespace
+
 HemerodromosDroneAudioProcessorEditor::HemerodromosDroneAudioProcessorEditor (
     HemerodromosDroneAudioProcessor& processor)
     : AudioProcessorEditor (&processor), processor_ (processor)
@@ -21,6 +33,13 @@ HemerodromosDroneAudioProcessorEditor::HemerodromosDroneAudioProcessorEditor (
     bankBox_.addItemList (processor_.bankLibrary().getNames(), 1);
     bankBox_.setSelectedItemIndex (3, juce::dontSendNotification);
     addAndMakeVisible (bankBox_);
+
+    neutralButton_.setTooltip ("Reset knobs to neutral");
+    neutralButton_.onClick = [this]
+    {
+        processor_.resetAllKnobParametersToNeutral();
+    };
+    addAndMakeVisible (neutralButton_);
 
     latchButton_.setButtonText ("Latch");
     addAndMakeVisible (latchButton_);
@@ -79,6 +98,7 @@ void HemerodromosDroneAudioProcessorEditor::resized()
     auto header = area.removeFromTop (58);
     titleLabel_.setBounds (header.removeFromLeft (360));
     bankBox_.setBounds (header.removeFromLeft (260).reduced (8, 12));
+    neutralButton_.setBounds (header.removeFromLeft (104).reduced (6, 14));
     latchButton_.setBounds (header.removeFromRight (90).reduced (6, 14));
     statusLabel_.setBounds (header.reduced (10, 12));
 
@@ -100,6 +120,14 @@ void HemerodromosDroneAudioProcessorEditor::addKnob (ui::Knob& knob, const char*
 {
     addAndMakeVisible (knob);
     knobs_.push_back (&knob);
+    if (const auto* spec = findKnobSpec (parameterId))
+        knob.setNeutralValue (spec->neutral);
+
+    knob.setResetCallback ([this, parameterId = juce::String (parameterId)]
+    {
+        processor_.resetParameterToNeutral (parameterId);
+    });
+
     sliderAttachments_.push_back (
         std::make_unique<SliderAttachment> (processor_.state(), parameterId, knob.slider()));
 }

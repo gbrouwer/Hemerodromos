@@ -7,9 +7,9 @@ struct PostEffectParameters
     float roughness = 0.0f;
     float resonator = 0.0f;
     float reverbMix = 0.0f;
-    float reverbSize = 0.5f;
-    float reverbDecay = 0.5f;
-    float stereoWidth = 0.5f;
+    float reverbSize = 0.0f;
+    float reverbDecay = 0.0f;
+    float stereoWidth = 0.35f;
 };
 
 class PostEffects

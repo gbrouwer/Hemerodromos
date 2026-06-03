@@ -37,6 +37,8 @@ public:
     juce::AudioProcessorValueTreeState& state() noexcept { return apvts_; }
     DroneBankLibrary& bankLibrary() noexcept { return bankLibrary_; }
     const DroneBank* currentBank() const noexcept { return synth_.currentBank(); }
+    void resetParameterToNeutral (const juce::String& parameterId);
+    void resetAllKnobParametersToNeutral();
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 

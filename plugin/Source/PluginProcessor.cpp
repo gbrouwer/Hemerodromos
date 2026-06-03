@@ -3,6 +3,18 @@
 #include "ParameterIds.h"
 #include "PluginEditor.h"
 
+namespace
+{
+const ParameterIds::KnobParameterSpec* findKnobSpec (const juce::String& parameterId) noexcept
+{
+    for (const auto& spec : ParameterIds::knobParameterSpecs)
+        if (parameterId == spec.id)
+            return &spec;
+
+    return nullptr;
+}
+} // namespace
+
 HemerodromosDroneAudioProcessor::HemerodromosDroneAudioProcessor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts_ (*this, nullptr, "Parameters", createParameterLayout())
@@ -59,37 +71,22 @@ HemerodromosDroneAudioProcessor::createParameterLayout()
 {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
 
-    auto makeFloat = [&params] (const juce::String& id,
-                                const juce::String& name,
-                                juce::NormalisableRange<float> range,
-                                float defaultValue,
-                                const juce::String& unit = {})
-    {
-        params.push_back (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { id, 1 }, name, range, defaultValue,
-            juce::AudioParameterFloatAttributes().withLabel (unit)));
-    };
-
     params.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ParameterIds::bank, 1 },
         "Bank",
         juce::StringArray { "Drone 1", "Drone 2", "Drone 3", "Drone 4", "Drone 5" },
         3));
 
-    makeFloat (ParameterIds::gain, "Gain", { -60.0f, 6.0f, 0.01f }, -16.0f, "dB");
-    makeFloat (ParameterIds::tune, "Tune", { -24.0f, 24.0f, 0.01f }, 0.0f, "st");
-    makeFloat (ParameterIds::brightness, "Brightness", { 0.0f, 1.0f, 0.001f }, 0.5f);
-    makeFloat (ParameterIds::motionDepth, "Motion Depth", { 0.0f, 1.5f, 0.001f }, 0.65f);
-    makeFloat (ParameterIds::motionRate, "Motion Rate", { 0.05f, 4.0f, 0.001f }, 1.0f, "x");
-    makeFloat (ParameterIds::roughness, "Roughness", { 0.0f, 1.0f, 0.001f }, 0.1f);
-    makeFloat (ParameterIds::macroOsc, "Macro Osc", { 0.0f, 1.0f, 0.001f }, 0.0f);
-    makeFloat (ParameterIds::resonator, "Resonator", { 0.0f, 1.0f, 0.001f }, 0.0f);
-    makeFloat (ParameterIds::reverbMix, "Plate Space", { 0.0f, 1.0f, 0.001f }, 0.28f);
-    makeFloat (ParameterIds::reverbSize, "Space Size", { 0.0f, 1.0f, 0.001f }, 0.72f);
-    makeFloat (ParameterIds::reverbDecay, "Space Decay", { 0.0f, 1.0f, 0.001f }, 0.65f);
-    makeFloat (ParameterIds::stereoWidth, "Width", { 0.0f, 1.0f, 0.001f }, 0.75f);
-    makeFloat (ParameterIds::attack, "Attack", { 0.001f, 10.0f, 0.001f }, 1.0f, "s");
-    makeFloat (ParameterIds::release, "Release", { 0.01f, 30.0f, 0.001f }, 3.0f, "s");
+    for (const auto& spec : ParameterIds::knobParameterSpecs)
+    {
+        params.push_back (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { spec.id, 1 },
+            spec.name,
+            juce::NormalisableRange<float> { spec.minimum, spec.maximum, spec.interval },
+            spec.neutral,
+            juce::AudioParameterFloatAttributes().withLabel (spec.unit)));
+    }
+
     params.push_back (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { ParameterIds::latch, 1 }, "Latch", true));
 
@@ -131,6 +128,26 @@ void HemerodromosDroneAudioProcessor::updateBankIfNeeded (int bankIndex)
 
     synth_.loadBank (bankLibrary_.getBank (bounded));
     currentBankIndex_ = bounded;
+}
+
+void HemerodromosDroneAudioProcessor::resetParameterToNeutral (const juce::String& parameterId)
+{
+    const auto* spec = findKnobSpec (parameterId);
+    if (spec == nullptr)
+        return;
+
+    if (auto* parameter = dynamic_cast<juce::RangedAudioParameter*> (apvts_.getParameter (parameterId)))
+    {
+        parameter->beginChangeGesture();
+        parameter->setValueNotifyingHost (parameter->convertTo0to1 (spec->neutral));
+        parameter->endChangeGesture();
+    }
+}
+
+void HemerodromosDroneAudioProcessor::resetAllKnobParametersToNeutral()
+{
+    for (const auto& spec : ParameterIds::knobParameterSpecs)
+        resetParameterToNeutral (spec.id);
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

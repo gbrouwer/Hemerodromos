@@ -26,6 +26,7 @@ private:
     juce::ComboBox bankBox_;
     juce::Label titleLabel_;
     juce::Label statusLabel_;
+    juce::TextButton neutralButton_ { "Neutral" };
     juce::ToggleButton latchButton_;
 
     ui::Knob gain_ { "Gain", "dB" };
