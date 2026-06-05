@@ -44,6 +44,20 @@ DroneBankLibrary::DroneBankLibrary()
                                  BinaryData::drone_base4_fit_v001_dronebank_jsonSize));
     banks_.push_back (parseBank (BinaryData::drone_base5_fit_v001_dronebank_json,
                                  BinaryData::drone_base5_fit_v001_dronebank_jsonSize));
+    banks_.push_back (parseBank (BinaryData::drone_base6_fit_v001_dronebank_json,
+                                 BinaryData::drone_base6_fit_v001_dronebank_jsonSize));
+    banks_.push_back (parseBank (BinaryData::drone_base7_fit_v001_dronebank_json,
+                                 BinaryData::drone_base7_fit_v001_dronebank_jsonSize));
+    banks_.push_back (parseBank (BinaryData::drone_base8_fit_v001_dronebank_json,
+                                 BinaryData::drone_base8_fit_v001_dronebank_jsonSize));
+    banks_.push_back (parseBank (BinaryData::drone_base9_fit_v001_dronebank_json,
+                                 BinaryData::drone_base9_fit_v001_dronebank_jsonSize));
+    banks_.push_back (parseBank (BinaryData::drone_base10_fit_v001_dronebank_json,
+                                 BinaryData::drone_base10_fit_v001_dronebank_jsonSize));
+    banks_.push_back (parseBank (BinaryData::drone_base11_fit_v001_dronebank_json,
+                                 BinaryData::drone_base11_fit_v001_dronebank_jsonSize));
+    banks_.push_back (parseBank (BinaryData::drone_base12_fit_v001_dronebank_json,
+                                 BinaryData::drone_base12_fit_v001_dronebank_jsonSize));
 
     banks_.erase (std::remove_if (banks_.begin(), banks_.end(), [] (const DroneBank& bank)
                                   { return ! bank.isValid(); }),

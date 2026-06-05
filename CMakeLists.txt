@@ -14,7 +14,14 @@ juce_add_binary_data(HemerodromosDroneAssets
         assets/fitted/drone_base2_fit_v001.dronebank.json
         assets/fitted/drone_base3_fit_v001.dronebank.json
         assets/fitted/drone_base4_fit_v001.dronebank.json
-        assets/fitted/drone_base5_fit_v001.dronebank.json)
+        assets/fitted/drone_base5_fit_v001.dronebank.json
+        assets/fitted/drone_base6_fit_v001.dronebank.json
+        assets/fitted/drone_base7_fit_v001.dronebank.json
+        assets/fitted/drone_base8_fit_v001.dronebank.json
+        assets/fitted/drone_base9_fit_v001.dronebank.json
+        assets/fitted/drone_base10_fit_v001.dronebank.json
+        assets/fitted/drone_base11_fit_v001.dronebank.json
+        assets/fitted/drone_base12_fit_v001.dronebank.json)
 
 set(HEMERODROMOS_PLUGIN_SOURCES
     plugin/Source/PluginProcessor.cpp
