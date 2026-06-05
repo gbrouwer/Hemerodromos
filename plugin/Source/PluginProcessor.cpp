@@ -74,18 +74,7 @@ HemerodromosDroneAudioProcessor::createParameterLayout()
     params.push_back (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { ParameterIds::bank, 1 },
         "Bank",
-        juce::StringArray { "Drone 1",
-                            "Drone 2",
-                            "Drone 3",
-                            "Drone 4",
-                            "Drone 5",
-                            "Drone 6",
-                            "Drone 7",
-                            "Drone 8",
-                            "Drone 9",
-                            "Drone 10",
-                            "Drone 11",
-                            "Drone 12" },
+        DroneBankLibrary::getEmbeddedChoiceNames(),
         3));
 
     for (const auto& spec : ParameterIds::knobParameterSpecs)

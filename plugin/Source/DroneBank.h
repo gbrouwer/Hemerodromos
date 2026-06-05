@@ -31,6 +31,7 @@ public:
     int size() const noexcept { return static_cast<int> (banks_.size()); }
     const DroneBank& getBank (int index) const noexcept;
     juce::StringArray getNames() const;
+    static juce::StringArray getEmbeddedChoiceNames();
 
 private:
     std::vector<DroneBank> banks_;

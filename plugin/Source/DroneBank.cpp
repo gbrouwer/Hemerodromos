@@ -4,6 +4,13 @@
 
 namespace
 {
+struct BankResource
+{
+    juce::String resourceName;
+    juce::String originalFilename;
+    int bankNumber = 0;
+};
+
 double dbToAmplitude (double db) noexcept
 {
     return std::pow (10.0, db / 20.0);
@@ -30,34 +37,71 @@ std::vector<double> readDoubleArray (const juce::var& value)
     }
     return result;
 }
+
+int readBankNumber (const juce::String& filename) noexcept
+{
+    const auto marker = juce::String ("drone_base");
+    const auto start = filename.indexOf (marker);
+    if (start < 0)
+        return 0;
+
+    const auto firstDigit = start + marker.length();
+    auto numberText = juce::String();
+    for (auto index = firstDigit; index < filename.length(); ++index)
+    {
+        const auto character = filename[index];
+        if (! juce::CharacterFunctions::isDigit (character))
+            break;
+        numberText << character;
+    }
+
+    return numberText.isNotEmpty() ? numberText.getIntValue() : 0;
+}
+
+std::vector<BankResource> collectBankResources()
+{
+    std::vector<BankResource> resources;
+    resources.reserve (static_cast<size_t> (BinaryData::namedResourceListSize));
+
+    for (auto index = 0; index < BinaryData::namedResourceListSize; ++index)
+    {
+        const auto resourceName = juce::String (BinaryData::namedResourceList[index]);
+        const auto* original = BinaryData::getNamedResourceOriginalFilename (resourceName.toRawUTF8());
+        if (original == nullptr)
+            continue;
+
+        const auto originalFilename = juce::String (original);
+        if (! originalFilename.endsWithIgnoreCase (".dronebank.json"))
+            continue;
+
+        const auto bankNumber = readBankNumber (originalFilename);
+        if (bankNumber <= 0)
+            continue;
+
+        resources.push_back ({ resourceName, originalFilename, bankNumber });
+    }
+
+    std::sort (resources.begin(), resources.end(), [] (const BankResource& left, const BankResource& right)
+    {
+        if (left.bankNumber != right.bankNumber)
+            return left.bankNumber < right.bankNumber;
+
+        return left.originalFilename < right.originalFilename;
+    });
+    return resources;
+}
 } // namespace
 
 DroneBankLibrary::DroneBankLibrary()
 {
-    banks_.push_back (parseBank (BinaryData::drone_base1_fit_v001_dronebank_json,
-                                 BinaryData::drone_base1_fit_v001_dronebank_jsonSize));
-    banks_.push_back (parseBank (BinaryData::drone_base2_fit_v001_dronebank_json,
-                                 BinaryData::drone_base2_fit_v001_dronebank_jsonSize));
-    banks_.push_back (parseBank (BinaryData::drone_base3_fit_v001_dronebank_json,
-                                 BinaryData::drone_base3_fit_v001_dronebank_jsonSize));
-    banks_.push_back (parseBank (BinaryData::drone_base4_fit_v001_dronebank_json,
-                                 BinaryData::drone_base4_fit_v001_dronebank_jsonSize));
-    banks_.push_back (parseBank (BinaryData::drone_base5_fit_v001_dronebank_json,
-                                 BinaryData::drone_base5_fit_v001_dronebank_jsonSize));
-    banks_.push_back (parseBank (BinaryData::drone_base6_fit_v001_dronebank_json,
-                                 BinaryData::drone_base6_fit_v001_dronebank_jsonSize));
-    banks_.push_back (parseBank (BinaryData::drone_base7_fit_v001_dronebank_json,
-                                 BinaryData::drone_base7_fit_v001_dronebank_jsonSize));
-    banks_.push_back (parseBank (BinaryData::drone_base8_fit_v001_dronebank_json,
-                                 BinaryData::drone_base8_fit_v001_dronebank_jsonSize));
-    banks_.push_back (parseBank (BinaryData::drone_base9_fit_v001_dronebank_json,
-                                 BinaryData::drone_base9_fit_v001_dronebank_jsonSize));
-    banks_.push_back (parseBank (BinaryData::drone_base10_fit_v001_dronebank_json,
-                                 BinaryData::drone_base10_fit_v001_dronebank_jsonSize));
-    banks_.push_back (parseBank (BinaryData::drone_base11_fit_v001_dronebank_json,
-                                 BinaryData::drone_base11_fit_v001_dronebank_jsonSize));
-    banks_.push_back (parseBank (BinaryData::drone_base12_fit_v001_dronebank_json,
-                                 BinaryData::drone_base12_fit_v001_dronebank_jsonSize));
+    const auto resources = collectBankResources();
+    banks_.reserve (resources.size());
+    for (const auto& resource : resources)
+    {
+        auto dataSize = 0;
+        if (const auto* data = BinaryData::getNamedResource (resource.resourceName.toRawUTF8(), dataSize))
+            banks_.push_back (parseBank (data, dataSize));
+    }
 
     banks_.erase (std::remove_if (banks_.begin(), banks_.end(), [] (const DroneBank& bank)
                                   { return ! bank.isValid(); }),
@@ -85,6 +129,18 @@ juce::StringArray DroneBankLibrary::getNames() const
     juce::StringArray names;
     for (const auto& bank : banks_)
         names.add (bank.name.isNotEmpty() ? bank.name : "Drone");
+    return names;
+}
+
+juce::StringArray DroneBankLibrary::getEmbeddedChoiceNames()
+{
+    juce::StringArray names;
+    for (const auto& resource : collectBankResources())
+        names.add ("Drone " + juce::String (resource.bankNumber));
+
+    if (names.isEmpty())
+        names.add ("Drone");
+
     return names;
 }
 
