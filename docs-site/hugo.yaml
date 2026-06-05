@@ -1,0 +1,80 @@
+baseURL: "https://example.gitlab.io/hemerodromos/"
+title: "Hemerodromos Docs"
+theme: "hextra"
+copyright: "Copyright 2026 Gijs Joost Brouwer"
+
+author:
+  name: "Gijs Joost Brouwer"
+  email: "gbrouwer2112@gmail.com"
+
+enableRobotsTXT: true
+enableGitInfo: true
+disableKinds:
+  - taxonomy
+  - term
+
+outputs:
+  home: [HTML]
+  page: [HTML]
+  section: [HTML]
+
+module:
+  hugoVersion:
+    extended: true
+    min: "0.134.0"
+
+markup:
+  highlight:
+    noClasses: false
+  goldmark:
+    renderer:
+      unsafe: true
+
+menu:
+  main:
+    - identifier: docs
+      name: Docs
+      pageRef: /docs
+      weight: 1
+    - name: Search
+      weight: 2
+      params:
+        type: search
+
+params:
+  description: "Hemerodromos drone fitting and plugin documentation."
+
+  navbar:
+    displayTitle: true
+    width: wide
+
+  page:
+    width: normal
+
+  theme:
+    default: system
+    displayToggle: true
+
+  footer:
+    enable: true
+    displayCopyright: false
+    displayPoweredBy: true
+    width: normal
+
+  displayUpdatedDate: true
+  dateFormat: "January 2, 2006"
+
+  search:
+    enable: true
+    type: flexsearch
+    flexsearch:
+      index: content
+      tokenize: forward
+
+  highlight:
+    copy:
+      enable: true
+      display: hover
+
+  comments:
+    enable: false

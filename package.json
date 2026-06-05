@@ -1,0 +1,10 @@
+{
+  "name": "hemerodromos-docs",
+  "private": true,
+  "scripts": {
+    "docs:sync": "python3 scripts/rebuild_docs_site.py",
+    "docs:build": "scripts/build_docs_site.sh",
+    "docs:serve": "scripts/serve_docs_site.sh",
+    "docs:status": "scripts/rebuild_docs_site.py && find docs-site/content docs-site/static -maxdepth 3 -type f | sort"
+  }
+}

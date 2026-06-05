@@ -12,6 +12,10 @@ __pycache__/
 # C++ build outputs
 /build*/
 /cmake-build-*/
+/public/
+/docs-site/public/
+/docs-site/resources/
+/docs-site/.hugo_build.lock
 *.vst3
 *.component
 *.dll
