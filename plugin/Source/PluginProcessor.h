@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include "DroneBank.h"
+#include "ParameterIds.h"
 #include "SynthEngine.h"
 
 class HemerodromosDroneAudioProcessor final : public juce::AudioProcessor
@@ -36,9 +37,14 @@ public:
 
     juce::AudioProcessorValueTreeState& state() noexcept { return apvts_; }
     DroneBankLibrary& bankLibrary() noexcept { return bankLibrary_; }
-    const DroneBank* currentBank() const noexcept { return synth_.currentBank(); }
-    void resetParameterToNeutral (const juce::String& parameterId);
-    void resetAllKnobParametersToNeutral();
+    const DroneBank* currentBank (int layerIndex) const noexcept { return synth_.currentBank (layerIndex); }
+    int getLayerBankIndex (int layerIndex) const;
+    bool setLayerBankIndex (int layerIndex, int bankIndex);
+    void resetLayerParameterToNeutral (int layerIndex, const char* baseParameterId);
+    void resetAllKnobParametersToNeutral (int layerIndex);
+    bool savePresetToFile (const juce::File& file) const;
+    bool loadPresetFromFile (const juce::File& file);
+    juce::File defaultPresetDirectory() const;
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
@@ -46,8 +52,11 @@ private:
     juce::AudioProcessorValueTreeState apvts_;
     DroneBankLibrary bankLibrary_;
     SynthEngine synth_;
-    int currentBankIndex_ = -1;
+    std::array<int, ParameterIds::layerCount> currentBankIndices_ {};
 
     SynthParameters readParameters() const;
-    void updateBankIfNeeded (int bankIndex);
+    void updateBankIfNeeded (int layerIndex, int bankIndex);
+    void updateBanksIfNeeded (const SynthParameters& parameters);
+    float getParameterPlainValue (const juce::String& parameterId) const;
+    bool setParameterPlainValue (const juce::String& parameterId, float value);
 };

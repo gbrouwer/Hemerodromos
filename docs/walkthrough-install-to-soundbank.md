@@ -6,8 +6,8 @@ This walkthrough covers the full local workflow for Hemerodromos:
 - verify macOS and PyTorch/MPS capability;
 - add source samples to the protected soundbank input folder;
 - fit new drone banks;
-- rebuild the Standalone apps and VST3 plugins;
-- install the rebuilt VST3 bundles for Ableton or another DAW.
+- rebuild the Standalone app and VST3 plugin;
+- install the rebuilt VST3 bundle for Ableton or another DAW.
 
 The protected source-audio area is:
 
@@ -81,6 +81,8 @@ basis order:     4
 learning rate:   0.03
 device:          auto
 STFT sizes:      512,2048,8192
+frequency fit:   +/-20 cents static, +/-12 cents motion
+residual bands:  disabled
 report every:    100
 report seconds:  10
 ```
@@ -95,6 +97,8 @@ uv run dronefit fit audio/base/drones/drone_base13.wav \
   --window-seconds 1.5 \
   --basis-order 4 \
   --learning-rate 0.03 \
+  --max-frequency-offset-cents 20 \
+  --max-frequency-motion-cents 12 \
   --device auto \
   --report-every 100 \
   --report-seconds 10 \
@@ -102,7 +106,18 @@ uv run dronefit fit audio/base/drones/drone_base13.wav \
   --overwrite
 ```
 
-The soundbank update script wraps that manual flow and then rebuilds the plugins.
+The soundbank update script wraps that manual flow and then rebuilds the plugin.
+For a compatibility refit that keeps the cleaned filenames but disables newer
+analysis features, add `--no-sub-bin-peaks --fixed-partial-count
+--no-frequency-offsets --no-frequency-motion --single-resolution-stft-loss
+--no-stereo-fit --no-residual-noise --stft-fft-sizes 2048` to the manual
+`dronefit fit` command.
+
+To keep multiple fits for one source sample selectable in the plugin, encode the
+profile in `--fit-version`. For example, `v001_mrstft` creates
+`runs/drone_base13_fit_v001_mrstft/`,
+`assets/fitted/drone_base13_fit_v001_mrstft.dronebank.json`, and a plugin bank
+named `Drone 13 MR-STFT`.
 
 ## 5. Add New Source Samples
 
@@ -134,8 +149,8 @@ The source WAVs are ignored by Git by default. This is intentional.
 scripts/update_soundbank.py --mode status
 ```
 
-This scans `audio/base`, detects samples with missing fitted-bank assets, and
-prints a status table.
+This scans `audio/base`, detects samples with missing fitted-bank assets, prints
+a status table, and reports duplicate source files with identical content.
 
 For a non-mutating preview:
 
@@ -153,10 +168,11 @@ For each new source sample, the script:
 
 1. removes derivative outputs for that sample only;
 2. runs `dronefit fit`;
-3. copies `runs/<sample>_fit_v001/default.dronebank.json` into `assets/fitted/`;
-4. rebuilds both JUCE plugin targets;
-5. installs both VST3 bundles;
-6. ad-hoc signs and verifies the installed VST3 bundles on macOS.
+3. prints fit-quality metrics;
+4. copies approved `runs/<sample>_fit_v001/default.dronebank.json` into `assets/fitted/`;
+5. rebuilds the JUCE plugin target;
+6. installs the VST3 bundle;
+7. ad-hoc signs and verifies the installed VST3 bundle on macOS.
 
 It refuses to remove paths inside `audio/base`.
 
@@ -170,15 +186,34 @@ scripts/update_soundbank.py \
 ```
 
 Use this when you want to replace only specific fitted banks.
+Add `--no-sub-bin-peaks --fixed-partial-count --no-frequency-offsets
+--no-frequency-motion --no-multi-resolution-stft-loss --no-stereo-fit
+--no-residual-noise --stft-fft-sizes 2048` when you want the old-style
+amplitude-only additive output while preserving the cleaned asset names.
+
+For the current A/B comparison profiles:
+
+```bash
+scripts/update_soundbank.py --mode all --fit-version v001_mrstft --yes
+scripts/update_soundbank.py --mode all --fit-version v001_srstft \
+  --no-multi-resolution-stft-loss \
+  --stft-fft-sizes 2048 \
+  --yes
+```
+
+These profiles differ only by the multi-resolution STFT loss setting.
 
 ## 9. Reprocess Everything
 
 ```bash
-scripts/update_soundbank.py --mode all --yes
+scripts/update_soundbank.py --mode all --duplicate-policy warn --yes
 ```
 
 This replaces every generated fit for every sample under `audio/base`. Use it
 only when the fitting method or soundbank format has changed.
+
+Use `--duplicate-policy warn` only if duplicate source content is intentional.
+Without it, duplicate files are blocked before fitting.
 
 ## 10. Build Plugins Without Refitting
 
@@ -193,12 +228,14 @@ Build outputs are:
 ```text
 build/HemerodromosDrone_artefacts/RelWithDebInfo/Standalone/Hemerodromos Drone.app
 build/HemerodromosDrone_artefacts/RelWithDebInfo/VST3/Hemerodromos Drone.vst3
-build/HemerodromosDroneTriggered_artefacts/RelWithDebInfo/Standalone/Hemerodromos Drone Triggered.app
-build/HemerodromosDroneTriggered_artefacts/RelWithDebInfo/VST3/Hemerodromos Drone Triggered.vst3
 ```
 
-The always-on plugin is `Hemerodromos Drone`. The MIDI-gated instrument plugin
-is `Hemerodromos Drone Triggered`.
+The plugin exposes four independent drone layers. Use the layer buttons `1`
+through `4` to choose which layer the shared knobs edit. Each layer has its own
+bank selector, enable switch, and neutral-centered knob values; only enabled
+layers contribute sound. By default layer 1 is enabled and layers 2 through 4 are
+disabled, so a new instance still behaves like a single-drone instrument until
+extra layers are enabled.
 
 ## 11. Install VST3 Bundles Manually
 
@@ -207,9 +244,6 @@ The updater handles this automatically, but the manual install is:
 ```bash
 ditto "build/HemerodromosDrone_artefacts/RelWithDebInfo/VST3/Hemerodromos Drone.vst3" \
   "$HOME/Library/Audio/Plug-Ins/VST3/Hemerodromos Drone.vst3"
-
-ditto "build/HemerodromosDroneTriggered_artefacts/RelWithDebInfo/VST3/Hemerodromos Drone Triggered.vst3" \
-  "$HOME/Library/Audio/Plug-Ins/VST3/Hemerodromos Drone Triggered.vst3"
 ```
 
 Then sign and verify:
@@ -217,12 +251,9 @@ Then sign and verify:
 ```bash
 codesign --force --deep --sign - "$HOME/Library/Audio/Plug-Ins/VST3/Hemerodromos Drone.vst3"
 codesign --verify --deep --strict "$HOME/Library/Audio/Plug-Ins/VST3/Hemerodromos Drone.vst3"
-
-codesign --force --deep --sign - "$HOME/Library/Audio/Plug-Ins/VST3/Hemerodromos Drone Triggered.vst3"
-codesign --verify --deep --strict "$HOME/Library/Audio/Plug-Ins/VST3/Hemerodromos Drone Triggered.vst3"
 ```
 
-Restart or rescan Ableton after installing new VST3 bundles.
+Restart or rescan Ableton after installing the new VST3 bundle.
 
 ## 12. Build The Web Docs
 

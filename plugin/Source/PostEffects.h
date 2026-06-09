@@ -21,6 +21,8 @@ public:
 
 private:
     double sampleRate_ = 44100.0;
+    int maxBlockSize_ = 0;
+    bool prepared_ = false;
     juce::Reverb reverb_;
     juce::dsp::StateVariableTPTFilter<float> resonatorL_;
     juce::dsp::StateVariableTPTFilter<float> resonatorR_;

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import shutil
 from typing import Annotated
 
@@ -44,6 +45,17 @@ def init_bank_command(
     out: Annotated[Path, typer.Option(help="Output .dronebank.json path.")],
     partials: Annotated[int, typer.Option(help="Number of partials to initialize.")] = 96,
     root_midi_note: Annotated[int, typer.Option(help="Reference note for later transposition.")] = 48,
+    sub_bin_peaks: Annotated[
+        bool,
+        typer.Option("--sub-bin-peaks/--no-sub-bin-peaks", help="Use sub-bin peak interpolation."),
+    ] = False,
+    adaptive_partial_count: Annotated[
+        bool,
+        typer.Option(
+            "--adaptive-partial-count/--fixed-partial-count",
+            help="Drop weak partials using the newer adaptive detector.",
+        ),
+    ] = False,
     report_out: Annotated[
         Path | None,
         typer.Option(help="Optional directory for bank figures and metrics."),
@@ -53,7 +65,7 @@ def init_bank_command(
 
     source_info = sf.info(sample)
     audio = load_audio(sample, mono=True, normalize_peak_dbfs=-6.0)
-    name = out.parent.name if out.name == "default.dronebank.json" else out.stem
+    name = display_name_from_stem(sample.stem)
     bank = create_initial_bank(
         name=name,
         samples=audio.mono,
@@ -61,6 +73,8 @@ def init_bank_command(
         duration_seconds=audio.duration_seconds,
         partials=partials,
         root_midi_note=root_midi_note,
+        use_sub_bin_interpolation=sub_bin_peaks,
+        adaptive_partial_count=adaptive_partial_count,
     )
     bank.metadata.update(
         {
@@ -167,6 +181,52 @@ def fit_command(
     window_seconds: Annotated[float, typer.Option(help="Random crop length per optimization step.")] = 1.5,
     basis_order: Annotated[int, typer.Option(help="Fourier amplitude-motion order.")] = 4,
     learning_rate: Annotated[float, typer.Option(help="Adam learning rate.")] = 0.03,
+    max_frequency_offset_cents: Annotated[
+        float,
+        typer.Option(help="Maximum learned static frequency offset per partial, in cents."),
+    ] = 20.0,
+    max_frequency_motion_cents: Annotated[
+        float,
+        typer.Option(help="Maximum learned Fourier frequency motion per partial, in cents."),
+    ] = 12.0,
+    residual_noise_bands: Annotated[
+        int,
+        typer.Option(help="Number of residual filtered-noise bands to export when --residual-noise is set."),
+    ] = 0,
+    sub_bin_peaks: Annotated[
+        bool,
+        typer.Option("--sub-bin-peaks/--no-sub-bin-peaks", help="Use sub-bin peak interpolation."),
+    ] = False,
+    adaptive_partial_count: Annotated[
+        bool,
+        typer.Option(
+            "--adaptive-partial-count/--fixed-partial-count",
+            help="Drop weak partials using the newer adaptive detector.",
+        ),
+    ] = False,
+    frequency_offsets: Annotated[
+        bool,
+        typer.Option("--frequency-offsets/--no-frequency-offsets", help="Fit static per-partial frequency offsets."),
+    ] = False,
+    frequency_motion: Annotated[
+        bool,
+        typer.Option("--frequency-motion/--no-frequency-motion", help="Fit slow per-partial frequency motion."),
+    ] = False,
+    multi_resolution_stft_loss: Annotated[
+        bool,
+        typer.Option(
+            "--multi-resolution-stft-loss/--single-resolution-stft-loss",
+            help="Use all configured STFT FFT sizes instead of only the largest one.",
+        ),
+    ] = True,
+    stereo_fit: Annotated[
+        bool,
+        typer.Option("--stereo-fit/--no-stereo-fit", help="Estimate fitted stereo width from the source sample."),
+    ] = False,
+    residual_noise: Annotated[
+        bool,
+        typer.Option("--residual-noise/--no-residual-noise", help="Export residual filtered-noise bands."),
+    ] = False,
     device: Annotated[str, typer.Option(help="Device: auto, cpu, or mps.")] = "auto",
     report_every: Annotated[int, typer.Option(help="Write checkpoint reports every N steps; 0 disables.")] = 100,
     report_seconds: Annotated[float, typer.Option(help="Seconds rendered for checkpoint reports.")] = 10.0,
@@ -193,11 +253,13 @@ def fit_command(
         audio = load_audio(sample, mono=True, normalize_peak_dbfs=-6.0)
         initial_bank_path = out / "initial.dronebank.json"
         initial_bank = create_initial_bank(
-            name=f"{sample.stem}_fit_init",
+            name=display_name_from_stem(sample.stem),
             samples=audio.mono,
             sample_rate=audio.sample_rate,
             duration_seconds=audio.duration_seconds,
             partials=partials,
+            use_sub_bin_interpolation=sub_bin_peaks,
+            adaptive_partial_count=adaptive_partial_count,
         )
         initial_bank.metadata.update(
             {
@@ -221,6 +283,14 @@ def fit_command(
         window_seconds=window_seconds,
         basis_order=basis_order,
         learning_rate=learning_rate,
+        max_frequency_offset_cents=max_frequency_offset_cents,
+        max_frequency_motion_cents=max_frequency_motion_cents,
+        fit_frequency_offsets=frequency_offsets,
+        fit_frequency_motion=frequency_motion,
+        use_multi_resolution_stft_loss=multi_resolution_stft_loss,
+        fit_stereo_width=stereo_fit,
+        fit_residual_noise=residual_noise,
+        residual_noise_bands=residual_noise_bands,
         seed=seed,
         device=device,  # type: ignore[arg-type]
         stft_fft_sizes=_parse_fft_sizes(stft_fft_sizes),
@@ -245,6 +315,13 @@ def _parse_fft_sizes(value: str) -> tuple[int, ...]:
         msg = "at least one FFT size is required"
         raise typer.BadParameter(msg)
     return sizes
+
+
+def display_name_from_stem(stem: str) -> str:
+    match = re.fullmatch(r"drone_base0*(\d+)", stem)
+    if match:
+        return f"Drone {int(match.group(1))}"
+    return " ".join(part for part in re.split(r"[_\\-\\s]+", stem.strip()) if part).title() or "Drone"
 
 
 def _prepare_fit_output_dir(out: Path, *, overwrite: bool) -> None:

@@ -31,6 +31,9 @@ def extract_spectral_peaks(
     max_freq_hz: float | None = None,
     min_spacing_hz: float = 8.0,
     prominence_db: float = 6.0,
+    min_relative_db: float = -78.0,
+    use_sub_bin_interpolation: bool = False,
+    adaptive_partial_count: bool = False,
 ) -> list[SpectralPeak]:
     """Find stable spectral peaks in a mono signal."""
 
@@ -72,16 +75,40 @@ def extract_spectral_peaks(
             break
 
     peak_mag = float(np.max(magnitude[selected], initial=1e-12))
-    peaks = [
-        SpectralPeak(
-            freq_hz=float(freqs[idx]),
-            amp_db=amplitude_to_db(float(magnitude[idx] / peak_mag)),
-            magnitude=float(magnitude[idx]),
-            bin_index=int(idx),
+    peaks = []
+    for idx in selected:
+        fractional_bin = idx
+        if use_sub_bin_interpolation:
+            fractional_bin += _parabolic_bin_offset(magnitude_db, idx)
+        freq_hz = float(fractional_bin * sample_rate / fft_size)
+        if not use_sub_bin_interpolation:
+            freq_hz = float(freqs[idx])
+        amp_db = amplitude_to_db(float(magnitude[idx] / peak_mag))
+        if adaptive_partial_count and amp_db < min_relative_db:
+            continue
+        peaks.append(
+            SpectralPeak(
+                freq_hz=freq_hz,
+                amp_db=amp_db,
+                magnitude=float(magnitude[idx]),
+                bin_index=int(idx),
+            )
         )
-        for idx in selected
-    ]
     return sorted(peaks, key=lambda peak: peak.freq_hz)
+
+
+def _parabolic_bin_offset(values: np.ndarray, index: int) -> float:
+    """Estimate a sub-bin peak offset from a three-point parabola."""
+
+    if index <= 0 or index >= len(values) - 1:
+        return 0.0
+    left = float(values[index - 1])
+    center = float(values[index])
+    right = float(values[index + 1])
+    denominator = left - 2.0 * center + right
+    if abs(denominator) < 1.0e-12:
+        return 0.0
+    return float(np.clip(0.5 * (left - right) / denominator, -0.5, 0.5))
 
 
 def create_initial_bank(
@@ -92,8 +119,16 @@ def create_initial_bank(
     duration_seconds: float,
     partials: int = 96,
     root_midi_note: int = 48,
+    use_sub_bin_interpolation: bool = False,
+    adaptive_partial_count: bool = False,
 ) -> DroneBank:
-    peaks = extract_spectral_peaks(samples, sample_rate, partials=partials)
+    peaks = extract_spectral_peaks(
+        samples,
+        sample_rate,
+        partials=partials,
+        use_sub_bin_interpolation=use_sub_bin_interpolation,
+        adaptive_partial_count=adaptive_partial_count,
+    )
     return DroneBank(
         name=name,
         analysis_sample_rate=sample_rate,
@@ -124,5 +159,7 @@ def create_initial_bank(
             "initialization": "median_stft_peak_extraction",
             "partials_requested": partials,
             "partials_detected": len(peaks),
+            "use_sub_bin_interpolation": use_sub_bin_interpolation,
+            "adaptive_partial_count": adaptive_partial_count,
         },
     )

@@ -25,6 +25,12 @@ class DocPage:
 
 DOC_PAGES = [
     DocPage(
+        "beta-release.md",
+        "beta-release.md",
+        "Beta Release",
+        5,
+    ),
+    DocPage(
         "walkthrough-install-to-soundbank.md",
         "walkthrough.md",
         "Full Walkthrough",
@@ -90,6 +96,7 @@ type: hextra-home
 Offline drone fitting tools plus JUCE Standalone and VST3 instruments.
 
 {{< cards >}}
+  {{< card link=\"docs/beta-release/\" title=\"Beta Release\" subtitle=\"Current VST3 instrument state, soundbank, presets, and beta expectations.\" >}}
   {{< card link=\"docs/walkthrough/\" title=\"Full Walkthrough\" subtitle=\"Install, add sounds, fit banks, rebuild plugins, and publish docs.\" >}}
   {{< card link=\"docs/soundbank-update-pipeline/\" title=\"Soundbank Updates\" subtitle=\"Run the repeatable pipeline for new or selected samples.\" >}}
   {{< card link=\"docs/dronefit-fitting/\" title=\"Dronefit\" subtitle=\"Understand the fitting model and generated bank format.\" >}}
@@ -108,8 +115,8 @@ weight: 1
 
 # Documentation
 
-Start with the full walkthrough, then use the focused pages for fitting,
-reports, and soundbank maintenance details.
+Start with the beta release note and full walkthrough, then use the focused
+pages for fitting, reports, and soundbank maintenance details.
 """,
         encoding="utf-8",
     )

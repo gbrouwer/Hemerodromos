@@ -53,6 +53,7 @@ class DroneBank(BaseModel):
     basis: Basis = Field(default_factory=Basis)
     partials: list[Partial]
     noise_bands: list[dict[str, Any]] = Field(default_factory=list)
+    stereo_width: float = Field(default=0.35, ge=0.0, le=1.0)
     macros: dict[str, Macro] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
 

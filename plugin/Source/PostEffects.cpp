@@ -2,8 +2,17 @@
 
 void PostEffects::prepare (double sampleRate, int maxBlockSize)
 {
+    const auto boundedMaxBlockSize = juce::jmax (1, maxBlockSize);
+    if (prepared_ && sampleRate_ == sampleRate)
+    {
+        maxBlockSize_ = boundedMaxBlockSize;
+        return;
+    }
+
     sampleRate_ = sampleRate;
-    juce::dsp::ProcessSpec spec { sampleRate, static_cast<juce::uint32> (maxBlockSize), 2 };
+    maxBlockSize_ = boundedMaxBlockSize;
+    prepared_ = true;
+    juce::dsp::ProcessSpec spec { sampleRate, static_cast<juce::uint32> (maxBlockSize_), 2 };
     resonatorL_.prepare (spec);
     resonatorR_.prepare (spec);
     resonatorL_.setType (juce::dsp::StateVariableTPTFilterType::bandpass);

@@ -8,6 +8,7 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 .ipynb_checkpoints/
+*.code-workspace
 
 # C++ build outputs
 /build*/

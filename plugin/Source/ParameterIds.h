@@ -1,10 +1,15 @@
 #pragma once
 
+#include <JuceHeader.h>
+
 #include <array>
 
 namespace ParameterIds
 {
+static constexpr int layerCount = 4;
+
 static constexpr auto bank = "bank";
+static constexpr auto enabled = "enabled";
 static constexpr auto gain = "gain";
 static constexpr auto tune = "tune";
 static constexpr auto brightness = "brightness";
@@ -20,6 +25,21 @@ static constexpr auto stereoWidth = "stereoWidth";
 static constexpr auto attack = "attack";
 static constexpr auto release = "release";
 static constexpr auto latch = "latch";
+
+inline juce::String layerPrefix (int layerIndex)
+{
+    return "layer" + juce::String (juce::jlimit (0, layerCount - 1, layerIndex) + 1);
+}
+
+inline juce::String layerParameterId (int layerIndex, const char* baseId)
+{
+    return layerPrefix (layerIndex) + "_" + baseId;
+}
+
+inline juce::String layerParameterName (int layerIndex, const char* name)
+{
+    return "Layer " + juce::String (juce::jlimit (0, layerCount - 1, layerIndex) + 1) + " " + name;
+}
 
 struct KnobParameterSpec
 {
