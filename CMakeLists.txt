@@ -76,6 +76,8 @@ add_hemerodromos_drone_plugin(
 juce_add_console_app(HemerodromosScreenshot
     PRODUCT_NAME "Hemerodromos Screenshot")
 
+add_dependencies(HemerodromosScreenshot HemerodromosDrone)
+
 target_sources(HemerodromosScreenshot PRIVATE
     tools/render_plugin_screenshot.cpp
     ${HEMERODROMOS_PLUGIN_SOURCES})
