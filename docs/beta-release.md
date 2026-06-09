@@ -3,6 +3,13 @@
 This repository now contains the first beta of the Hemerodromos Drone VST3
 instrument.
 
+## Downloads
+
+- [VST3 plugin zip](https://github.com/gbrouwer/Hemerodromos/releases/download/v0.1.0-beta.1/Hemerodromos-Drone-v0.1.0-beta.1-macos-arm64-vst3.zip)
+- [Standalone app zip](https://github.com/gbrouwer/Hemerodromos/releases/download/v0.1.0-beta.1/Hemerodromos-Drone-v0.1.0-beta.1-macos-arm64-standalone.zip)
+- [Checksums](https://github.com/gbrouwer/Hemerodromos/releases/download/v0.1.0-beta.1/SHA256SUMS.txt)
+- [GitHub release page](https://github.com/gbrouwer/Hemerodromos/releases/tag/v0.1.0-beta.1)
+
 ## Plugin
 
 The beta plugin is `Hemerodromos Drone`, a JUCE Standalone and VST3 instrument

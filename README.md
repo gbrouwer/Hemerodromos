@@ -17,6 +17,12 @@ controls, preset save/load, and a rack-style GUI.
 
 ## Current Beta
 
+Download the current macOS arm64 beta:
+
+- [VST3 plugin zip](https://github.com/gbrouwer/Hemerodromos/releases/download/v0.1.0-beta.1/Hemerodromos-Drone-v0.1.0-beta.1-macos-arm64-vst3.zip)
+- [Standalone app zip](https://github.com/gbrouwer/Hemerodromos/releases/download/v0.1.0-beta.1/Hemerodromos-Drone-v0.1.0-beta.1-macos-arm64-standalone.zip)
+- [Release notes and checksums](https://github.com/gbrouwer/Hemerodromos/releases/tag/v0.1.0-beta.1)
+
 Start here:
 
 - [Beta release notes](docs/beta-release.md)
