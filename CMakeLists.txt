@@ -72,3 +72,26 @@ add_hemerodromos_drone_plugin(
     "Hemerodromos Drone"
     "com.gijsbrouwer.hemerodromosdrone"
     "Fldb")
+
+juce_add_console_app(HemerodromosScreenshot
+    PRODUCT_NAME "Hemerodromos Screenshot")
+
+target_sources(HemerodromosScreenshot PRIVATE
+    tools/render_plugin_screenshot.cpp
+    ${HEMERODROMOS_PLUGIN_SOURCES})
+
+target_include_directories(HemerodromosScreenshot PRIVATE
+    plugin/Source
+    "${CMAKE_CURRENT_BINARY_DIR}/HemerodromosDrone_artefacts/JuceLibraryCode")
+
+target_link_libraries(HemerodromosScreenshot PRIVATE
+    HemerodromosDroneAssets
+    juce::juce_audio_utils
+    juce::juce_dsp
+    juce::juce_gui_extra)
+
+target_compile_definitions(HemerodromosScreenshot PRIVATE
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_VST3_CAN_REPLACE_VST2=0
+    JucePlugin_Name="Hemerodromos Drone")

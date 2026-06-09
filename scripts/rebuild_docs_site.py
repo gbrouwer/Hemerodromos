@@ -95,6 +95,11 @@ type: hextra-home
 
 Offline drone fitting tools plus JUCE Standalone and VST3 instruments.
 
+<div style="text-align: center; margin: 1.5rem auto 2rem;">
+  <img src="/assets/DR1-001.svg" alt="UMOJA DR-001 logo" style="width: min(420px, 78vw); margin: 0 auto 1.25rem;" />
+  <img src="/assets/vst3-screenshot.png" alt="Hemerodromos Drone VST3 interface" style="width: min(1040px, 100%); margin: 0 auto; border-radius: 10px; box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);" />
+</div>
+
 {{< cards >}}
   {{< card link=\"docs/beta-release/\" title=\"Beta Release\" subtitle=\"Current VST3 instrument state, soundbank, presets, and beta expectations.\" >}}
   {{< card link=\"docs/walkthrough/\" title=\"Full Walkthrough\" subtitle=\"Install, add sounds, fit banks, rebuild plugins, and publish docs.\" >}}
@@ -157,12 +162,16 @@ def strip_initial_h1(text: str) -> str:
 
 
 def copy_static_assets() -> None:
-    source = DOCS_ROOT / "walkthrough-assets"
-    destination = STATIC_ROOT / "walkthrough-assets"
-    if destination.exists():
-        shutil.rmtree(destination)
-    if source.exists():
-        shutil.copytree(source, destination)
+    for source_name, destination_name in (
+        ("walkthrough-assets", "walkthrough-assets"),
+        ("assets", "assets"),
+    ):
+        source = DOCS_ROOT / source_name
+        destination = STATIC_ROOT / destination_name
+        if destination.exists():
+            shutil.rmtree(destination)
+        if source.exists():
+            shutil.copytree(source, destination)
 
 
 if __name__ == "__main__":

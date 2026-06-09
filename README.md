@@ -1,5 +1,13 @@
 # Hemerodromos Drone
 
+<p align="center">
+  <img src="docs/assets/DR1-001.svg" alt="UMOJA DR-001 logo" width="420">
+</p>
+
+<p align="center">
+  <img src="docs/assets/vst3-screenshot.png" alt="Hemerodromos Drone VST3 interface">
+</p>
+
 Hemerodromos Drone is a beta JUCE Standalone and VST3 instrument for fitting
 drone source recordings into compact, real-time synthesizer banks.
 
@@ -87,6 +95,14 @@ Serve locally:
 
 ```bash
 scripts/serve_docs_site.sh
+```
+
+Regenerate the plugin UI screenshot used by the README and docs home:
+
+```bash
+cmake --build build --target HemerodromosScreenshot
+build/HemerodromosScreenshot_artefacts/RelWithDebInfo/HemerodromosScreenshot \
+  docs/assets/vst3-screenshot.png
 ```
 
 ## GitHub Pages
