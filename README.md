@@ -89,21 +89,21 @@ Serve locally:
 scripts/serve_docs_site.sh
 ```
 
-## GitLab Pages
+## GitHub Pages
 
-GitLab Pages is configured in [.gitlab-ci.yml](.gitlab-ci.yml). When the default
-branch is pushed to GitLab, the `pages` job builds the Hextra docs site and
-publishes the `public/` artifact.
+GitHub Pages is configured in
+[.github/workflows/pages.yml](.github/workflows/pages.yml). When `main` is pushed
+to GitHub, the workflow builds the Hextra docs site and deploys the generated
+`public/` artifact.
 
-Expected Pages URL for the existing GitLab project:
+Expected Pages URL:
 
 ```text
-https://umoja-group.gitlab.io/hemerodromos/
+https://gbrouwer.github.io/Hemerodromos/
 ```
 
-The local Hugo config contains a placeholder `baseURL`, but the GitLab pipeline
-overrides it with `CI_PAGES_URL`, so the published site should use the correct
-GitLab Pages URL automatically.
+In the GitHub repository settings, set **Pages > Build and deployment > Source**
+to **GitHub Actions**.
 
 ## Validation
 

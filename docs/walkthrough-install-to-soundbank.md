@@ -284,7 +284,14 @@ If local Hugo is missing, install it:
 brew install hugo
 ```
 
-GitLab Pages builds the same `docs-site/` content and publishes `public/`.
+GitHub Pages builds the same `docs-site/` content and publishes `public/` from
+the workflow in `.github/workflows/pages.yml`. In the GitHub repository
+settings, set **Pages > Build and deployment > Source** to **GitHub Actions**.
+The expected project Pages URL is:
+
+```text
+https://gbrouwer.github.io/Hemerodromos/
+```
 
 ## Static Walkthrough Artifacts
 
